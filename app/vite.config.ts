@@ -31,5 +31,15 @@ export default defineConfig({
     host: true,
     port: 5173,
     allowedHosts: true,
+    proxy: {
+      // Dev-only mirror of the Worker proxy in worker/index.ts.
+      // Points at the free tier (most common); paid-key users should test
+      // against the deployed Cloudflare Worker.
+      '/api/translate': {
+        target: 'https://api-free.deepl.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace('/api/translate', '/v2/translate'),
+      },
+    },
   },
 })

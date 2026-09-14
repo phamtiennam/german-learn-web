@@ -11,18 +11,12 @@ export class DeepLTranslator implements Translator {
     this.apiKey = apiKey
   }
 
-  private get endpoint(): string {
-    return this.apiKey.endsWith(':fx')
-      ? 'https://api-free.deepl.com'
-      : 'https://api.deepl.com'
-  }
-
   async translate(text: string, source: Lang, target: Lang): Promise<string> {
     const trimmed = text.trim()
     if (!trimmed) return ''
     if (source === target) return text
 
-    const res = await fetch(`${this.endpoint}/v2/translate`, {
+    const res = await fetch('/api/translate', {
       method: 'POST',
       headers: {
         Authorization: `DeepL-Auth-Key ${this.apiKey}`,
