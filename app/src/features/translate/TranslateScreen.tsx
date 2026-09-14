@@ -1,9 +1,15 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { DeepLTranslator, type Lang } from '../../core/services/translator'
 import { speak, isTTSSupported } from '../../core/services/tts'
-import { SETTING_KEYS, useSetting } from '../../core/settings/settingsStore'
+import {
+  DEFAULT_PROVIDER,
+  SETTING_KEYS,
+  useSetting,
+} from '../../core/settings/settingsStore'
 
 export default function TranslateScreen() {
+  const [provider] = useSetting(SETTING_KEYS.provider, DEFAULT_PROVIDER)
   const [deeplKey] = useSetting(SETTING_KEYS.deeplKey)
   const [voiceName] = useSetting(SETTING_KEYS.voiceName)
   const [rateStr] = useSetting(SETTING_KEYS.ttsRate, '1')
@@ -16,6 +22,9 @@ export default function TranslateScreen() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [error, setError] = useState<string | null>(null)
 
+  const providerReady = provider === 'deepl'
+  const needsDeeplKey = provider === 'deepl' && !deeplKey
+
   const swap = () => {
     setSource(target)
     setTarget(source)
@@ -26,7 +35,14 @@ export default function TranslateScreen() {
 
   const handleTranslate = async () => {
     if (!input.trim()) return
-    if (!deeplKey) {
+    if (!providerReady) {
+      setStatus('error')
+      setError(
+        `Provider "${provider}" is not wired up yet. Switch to DeepL in Settings.`,
+      )
+      return
+    }
+    if (needsDeeplKey) {
       setStatus('error')
       setError('Please add your DeepL API key in Settings.')
       return
@@ -64,6 +80,50 @@ export default function TranslateScreen() {
           {source} → {target} ⇄
         </button>
       </div>
+
+      {!providerReady && (
+        <div className="rounded-lg border border-amber-800 bg-amber-950/40 px-4 py-3 text-sm text-amber-200">
+          <p className="font-medium">
+            The <code>{provider}</code> provider isn't wired up yet.
+          </p>
+          <p className="mt-1 text-amber-300">
+            Switch to <strong>DeepL</strong> in{' '}
+            <Link to="/settings" className="text-sky-400 underline">
+              Settings
+            </Link>{' '}
+            for now. LLM providers ship with the Voice Chat phase.
+          </p>
+        </div>
+      )}
+
+      {providerReady && needsDeeplKey && (
+        <div className="rounded-lg border border-sky-800 bg-sky-950/40 px-4 py-3 text-sm text-slate-200">
+          <p className="font-medium text-slate-100">
+            Set up your DeepL key first
+          </p>
+          <ol className="mt-2 list-decimal space-y-1 pl-5 text-slate-300">
+            <li>
+              Get a free key at{' '}
+              <a
+                href="https://www.deepl.com/pro-api"
+                target="_blank"
+                rel="noreferrer"
+                className="text-sky-400 underline"
+              >
+                deepl.com/pro-api
+              </a>{' '}
+              (500k chars/month, ends with <code>:fx</code>).
+            </li>
+            <li>
+              Paste it in{' '}
+              <Link to="/settings" className="text-sky-400 underline">
+                Settings
+              </Link>{' '}
+              — then come back here to translate.
+            </li>
+          </ol>
+        </div>
+      )}
 
       <div className="flex flex-col gap-2">
         <label className="text-xs uppercase tracking-wide text-slate-400">

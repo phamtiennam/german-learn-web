@@ -38,11 +38,12 @@
 - **Persistent storage:** IndexedDB via **Dexie.js** (typed, promise-based, works offline).
 - Each entry: `{ id, german, english, dateAdded, notes, timesReviewed, lastReviewed }`.
 - CRUD: add, edit, delete, search (Dexie `where().startsWithIgnoreCase()`), sort (alphabetical / recent / least-reviewed).
-- **Export to Google Drive:**
-  - Format: CSV or JSON.
-  - Auth: **Google Identity Services** (GIS) JS library + Drive API scope `https://www.googleapis.com/auth/drive.file`.
-  - User picks a folder (Drive Picker API); app uploads `vocabulary_YYYY-MM-DD.csv` via `fetch` to Drive REST.
-- **Local export/import fallback:** download CSV / paste-in-CSV — works with zero setup, no OAuth required.
+- **Local backup/restore (JSON, Phase 2):** Settings screen offers "Backup all data" → downloads a single JSON file containing settings + vocab + provider keys. "Restore" accepts the same file. Manual sync between devices without any account.
+- **Local vocab export (CSV, Phase 2):** download vocab-only CSV for opening in Sheets/Excel.
+- **Google Drive Sync (Phase 6):** full app state (settings + vocab + provider keys) synced across devices via one JSON file in Drive's hidden `appDataFolder`. Hybrid architecture — localStorage stays the primary; Drive is opt-in.
+  - Auth: **Google Identity Services** (GIS) JS library + Drive API scope `https://www.googleapis.com/auth/drive.appdata` (hidden folder, only this app can read).
+  - Background sync on change (debounced), silent-fail if offline.
+  - Last-write-wins conflict resolution by timestamp.
 
 ## Feature 4 — Review Mode (Duolingo-style)
 

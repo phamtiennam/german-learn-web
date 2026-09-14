@@ -42,7 +42,13 @@ export function useSetting(
 }
 
 export const SETTING_KEYS = {
+  provider: 'provider',
   deeplKey: 'deeplKey',
+  openaiKey: 'openaiKey',
+  anthropicKey: 'anthropicKey',
   voiceName: 'voiceName',
   ttsRate: 'ttsRate',
 } as const
+
+export type Provider = 'deepl' | 'openai' | 'anthropic'
+export const DEFAULT_PROVIDER: Provider = 'deepl'

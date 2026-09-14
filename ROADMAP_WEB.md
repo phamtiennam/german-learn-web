@@ -37,14 +37,16 @@ Ship-incrementally plan for the web (PWA) version. Each phase produces something
 
 - [ ] Translate screen: German `<textarea>`, English result panel, swap-direction button.
 - [ ] `TranslatorService` interface + `DeepLTranslator` implementation (uses key from Settings → `localStorage`).
-- [ ] Settings screen: DeepL API key input (masked, saved to `localStorage`).
+- [ ] Settings screen: **provider picker** (DeepL / OpenAI / Anthropic) + per-provider API key input. **Only DeepL is wired up in Phase 1** — OpenAI/Anthropic slots are UI-only, deferred to Phase 7 when the LLM clients ship.
 - [ ] "🔊 Pronounce" button → `speechSynthesis.speak` with `de-DE`.
 - [ ] Voice picker in Settings (list `getVoices()` filtered by `de-DE`).
 - [ ] "+ Save to list" button (stub — toast only for now).
-- [ ] Error states: no key, quota exceeded, offline, no `de-DE` voice.
+- [ ] Error states: no key, quota exceeded, offline, no `de-DE` voice, provider not wired up.
 - [ ] Loading state (spinner + disable button during fetch).
 
 **Done when:** paste key → type "Hallo" → see "Hello" → tap speaker → hear "de-DE" voice.
+
+**Deferred (see Phase 7):** wiring OpenAI + Anthropic providers into `TranslatorService`. Once the LLM adapters exist for Voice Chat, hook them in as translators too — same key powers translation and conversation.
 
 ---
 
@@ -56,9 +58,10 @@ Ship-incrementally plan for the web (PWA) version. Each phase produces something
 - [ ] Wire "+ Save to list" from Translate screen → real Dexie insert.
 - [ ] Edit modal / route: change German/English/notes.
 - [ ] Empty state with friendly copy + CTA back to Translate.
-- [ ] Local **export/import CSV** (download `.csv` / file input).
+- [ ] Local **export/import CSV** for vocab (download `.csv` / file input).
+- [ ] Local **backup/restore JSON** for **full app state** (settings + vocab + provider keys). Settings screen → "Backup all data" downloads `germanlearn-backup-YYYY-MM-DD.json`; "Restore" accepts the same file. Manual sync fallback before Drive lands in Phase 6.
 
-**Done when:** translated words land in the list, survive a browser refresh, exportable/importable via CSV.
+**Done when:** translated words land in the list, survive a browser refresh, vocab exportable/importable via CSV, full state backup/restore round-trips via JSON file.
 
 ---
 
@@ -110,15 +113,21 @@ Punt if not high-priority. Web OCR quality is materially worse than iOS Vision.
 
 ---
 
-## Phase 6 — Google Drive Export (~2–3 days)
+## Phase 6 — Google Drive Sync (~3–4 days)
+
+Upgrade from the original "Drive Export" scope: sync the **full app state** (settings + vocab + provider keys), not just vocab CSV. Hybrid architecture — localStorage stays the fast/offline primary; Drive is opt-in sync across devices.
 
 - [ ] Set up Google Cloud project, OAuth client (Web application), authorize origins.
-- [ ] Add Google Identity Services script + Drive REST calls (`fetch`).
-- [ ] Settings → "Connect Google Drive" → GIS sign-in popup → store access token in memory (refresh via silent auth).
-- [ ] Export button on List: CSV serializer → multipart upload to Drive `appDataFolder` or user-picked folder (Drive Picker API).
-- [ ] Show last-export timestamp; allow disconnect (revoke token).
+- [ ] Add Google Identity Services (GIS) script + Drive REST calls (`fetch`).
+- [ ] Use `drive.appdata` scope — file lives in the hidden `appDataFolder`, invisible in normal Drive UI, only reachable via this app's OAuth client. Sufficient for storing API keys without extra encryption.
+- [ ] Settings → "Sync with Google Drive" → GIS sign-in popup → store access token in memory (refresh via silent auth on next visit).
+- [ ] On sign-in: upload current localStorage state as `germanlearn-state.json` in `appDataFolder`.
+- [ ] On sign-in from a second device: pull `germanlearn-state.json` → merge into localStorage → app already usable.
+- [ ] Background sync: after any settings/vocab change, debounce 5s then push to Drive. Silent-fail if offline.
+- [ ] Conflict handling: last-write-wins by timestamp (simple). Warn user if pulled state is older than local unsaved changes.
+- [ ] Show last-sync timestamp; "Sign out of Google" clears token (data stays in localStorage).
 
-**Done when:** tap Export → CSV appears in my Drive, opens in Sheets.
+**Done when:** sign in on Mac → paste key + add vocab → sign in on iPhone → same key + vocab appear without re-entry.
 
 ---
 
@@ -128,6 +137,7 @@ Warn about iOS Safari STT limitations up-front; primary target is desktop/Androi
 
 - [ ] Settings: LLM provider picker (OpenAI / Anthropic), API key (localStorage), model, CEFR level.
 - [ ] `LLMClient` interface + `OpenAIClient`, `AnthropicClient` (streaming via SSE).
+- [ ] **Wire LLM adapters into `TranslatorService`** so the provider picker in Settings (added in Phase 1) actually routes DE↔EN translation through OpenAI/Claude when selected. Rich-output mode: not just the translation but grammar note + IPA + example sentence. Same key powers translation and conversation.
 - [ ] Mic permission flow + browser support detection (`'SpeechRecognition' in window || 'webkitSpeechRecognition' in window`).
 - [ ] Call screen UI: avatar, mute, end, live transcript (both sides).
 - [ ] Loop: `SpeechRecognition('de-DE')` → LLM (streaming) → `speechSynthesis('de-DE')` → loopback.
