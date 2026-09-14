@@ -5,7 +5,11 @@ export interface Translator {
 }
 
 export class DeepLTranslator implements Translator {
-  constructor(private readonly apiKey: string) {}
+  private readonly apiKey: string
+
+  constructor(apiKey: string) {
+    this.apiKey = apiKey
+  }
 
   private get endpoint(): string {
     return this.apiKey.endsWith(':fx')
