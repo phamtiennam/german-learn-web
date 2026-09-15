@@ -32,13 +32,28 @@ export default defineConfig({
     port: 5173,
     allowedHosts: true,
     proxy: {
-      // Dev-only mirror of the Worker proxy in worker/index.ts.
-      // Points at the free tier (most common); paid-key users should test
-      // against the deployed Cloudflare Worker.
-      '/api/translate': {
-        target: 'https://api-free.deepl.com',
+      // Dev-only mirrors of the Worker /api/llm/* routes.
+      // Header conversion (Bearer -> x-api-key) is handled by
+      // configure() hooks so behavior matches production.
+      '/api/llm/openai': {
+        target: 'https://api.openai.com',
         changeOrigin: true,
-        rewrite: (path) => path.replace('/api/translate', '/v2/translate'),
+        rewrite: (path) => path.replace('/api/llm/openai', '/v1/chat/completions'),
+      },
+      '/api/llm/anthropic': {
+        target: 'https://api.anthropic.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace('/api/llm/anthropic', '/v1/messages'),
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq) => {
+            const auth = proxyReq.getHeader('authorization')
+            if (typeof auth === 'string' && auth.startsWith('Bearer ')) {
+              proxyReq.removeHeader('authorization')
+              proxyReq.setHeader('x-api-key', auth.slice('Bearer '.length))
+              proxyReq.setHeader('anthropic-version', '2023-06-01')
+            }
+          })
+        },
       },
     },
   },

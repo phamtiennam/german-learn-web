@@ -5,6 +5,7 @@
 **Language pair:** German ↔ English (bi-directional).
 **Target user:** Self-learners building active vocabulary + speaking confidence.
 **Origin:** Web port of the iOS app spec in `../GermanLearnApp/REQUIREMENTS.md`. Keep the iOS spec as-is for future use; this file supersedes it for the web build.
+**Provider model:** LLM-only (Anthropic Claude or OpenAI GPT), user-picks-one in Settings. See `../GermanLearnApp/REQUIREMENTS.md` for the original DeepL-based iOS spec.
 
 ---
 
@@ -12,17 +13,12 @@
 
 - **Input modes:**
   - **Text:** standard `<input>` / `<textarea>` (German or English).
-  - **Handwriting/Drawing:** HTML `<canvas>` with pointer events; OCR via one of:
-    - **DeepL Write API** — no handwriting; text only.
-    - **Google Cloud Vision `DOCUMENT_TEXT_DETECTION`** — best web OCR; paid (~$1.50 / 1k images).
-    - **Tesseract.js** — free, in-browser, but weak on handwriting; fine for printed.
-    - Phase 1 defers handwriting; add later once text path is stable.
-- **Output:** translation to the opposite language.
-- **Translation engine (pick one in Phase 1):**
-  - **DeepL API Free** — 500k chars/month free; best quality for DE↔EN.
-  - **Google Cloud Translate v3** — pay per char, high quality.
-  - **LibreTranslate** (self-hosted, free) — lower quality; only if avoiding paid APIs.
-- API key stored in `localStorage` (client-only, no backend); user pastes their own key in Settings.
+  - **Handwriting/Drawing (Phase 5):** HTML `<canvas>` with pointer events; OCR via **LLM Vision** (Claude Sonnet 5 or GPT-4o) — reuses the LLM key set for text translation; no separate OCR service.
+- **Output:** rich object — `{ translation, grammar?, example? }`. Grammar note and example sentence surface when the LLM includes them; UI degrades gracefully to plain translation.
+- **Engine (LLM-only):** user picks **Anthropic (Claude)** or **OpenAI (GPT)** in Settings. Both call the same JSON-shaped prompt via a same-origin Cloudflare Worker proxy (`/api/llm/openai`, `/api/llm/anthropic`) that hides upstream endpoints and avoids browser CORS quirks.
+  - Default models: `claude-haiku-4-5` (Anthropic), `gpt-4o-mini` (OpenAI). User can override in Settings.
+  - API key stored in `localStorage` (client-only, no backend); user pastes their own key in Settings — BYOK.
+- **Demo mode:** if no API key is set, Translate screen shows 3–5 preset example outputs (translation + grammar + example) so casual visitors see what the app does before committing to setup.
 - "+ Add to my list" button on the result screen.
 
 ## Feature 2 — Pronunciation (Text-to-Speech)
@@ -98,12 +94,12 @@
 
 | iOS spec | Web equivalent | Notes |
 |---|---|---|
-| Apple `Translation` framework (free, on-device) | DeepL / Google Translate API (paid) | Web has no free on-device MT; DeepL free tier covers hobby use |
-| `PencilKit` + `Vision` OCR | `<canvas>` + Tesseract.js / Cloud Vision | Handwriting quality drops; deferred |
+| Apple `Translation` framework (free, on-device) | LLM (Claude or OpenAI, BYOK) | LLM gives rich output (grammar, example, IPA) at ~$0.20/month for personal use |
+| `PencilKit` + `Vision` OCR | `<canvas>` + LLM Vision | Same LLM key powers text + handwriting + voice chat |
 | `AVSpeechSynthesizer` | `window.speechSynthesis` | Ties |
 | SwiftData | IndexedDB (Dexie.js) | Ties |
 | `GoogleSignIn-iOS` + Drive SDK | Google Identity Services + Drive REST | Web arguably simpler |
 | `SFSpeechRecognizer` | Web `SpeechRecognition` | iOS Safari unreliable; desktop/Android fine |
 | Keychain | `localStorage` (client-only) | Weaker; document it |
 | Min iOS 18 | Modern evergreen browsers | Fewer platform constraints |
-| App Store submission + $99/yr | Push to Cloudflare Pages / Vercel (free tier) | Zero-friction ship |
+| App Store submission + $99/yr | Push to Cloudflare Workers (free tier) | Zero-friction ship |

@@ -1,4 +1,6 @@
 import {
+  DEFAULT_ANTHROPIC_MODEL,
+  DEFAULT_OPENAI_MODEL,
   DEFAULT_PROVIDER,
   SETTING_KEYS,
   useSetting,
@@ -6,36 +8,66 @@ import {
 } from '../../core/settings/settingsStore'
 import { useVoices } from '../../core/services/tts'
 
-const PROVIDERS: { value: Provider; label: string; hint: string }[] = [
-  {
-    value: 'deepl',
-    label: 'DeepL',
-    hint: 'Best DE↔EN quality, free 500k chars/month.',
-  },
-  {
-    value: 'openai',
-    label: 'OpenAI',
-    hint: 'Rich output (grammar, examples). Reuses key with Voice Chat later.',
-  },
+const PROVIDERS: {
+  value: Provider
+  label: string
+  keyLabel: string
+  keyPlaceholder: string
+  keyUrl: string
+  keyUrlLabel: string
+  hint: string
+}[] = [
   {
     value: 'anthropic',
     label: 'Anthropic (Claude)',
-    hint: 'Rich output. Reuses key with Voice Chat later.',
+    keyLabel: 'Anthropic API key',
+    keyPlaceholder: 'sk-ant-…',
+    keyUrl: 'https://console.anthropic.com/settings/keys',
+    keyUrlLabel: 'console.anthropic.com/settings/keys',
+    hint: 'Claude Haiku 4.5 by default — cheap, fast, good for translation.',
+  },
+  {
+    value: 'openai',
+    label: 'OpenAI (GPT)',
+    keyLabel: 'OpenAI API key',
+    keyPlaceholder: 'sk-…',
+    keyUrl: 'https://platform.openai.com/api-keys',
+    keyUrlLabel: 'platform.openai.com/api-keys',
+    hint: 'GPT-4o-mini by default — cheap, fast, wide compatibility.',
   },
 ]
 
 export default function SettingsScreen() {
-  const [provider, setProvider] = useSetting(
+  const [providerRaw, setProvider] = useSetting(
     SETTING_KEYS.provider,
     DEFAULT_PROVIDER,
   )
-  const [deeplKey, setDeeplKey] = useSetting(SETTING_KEYS.deeplKey)
+  const provider = providerRaw as Provider
+
   const [openaiKey, setOpenaiKey] = useSetting(SETTING_KEYS.openaiKey)
-  const [anthropicKey, setAnthropicKey] = useSetting(SETTING_KEYS.anthropicKey)
+  const [openaiModel, setOpenaiModel] = useSetting(
+    SETTING_KEYS.openaiModel,
+    DEFAULT_OPENAI_MODEL,
+  )
+  const [anthropicKey, setAnthropicKey] = useSetting(
+    SETTING_KEYS.anthropicKey,
+  )
+  const [anthropicModel, setAnthropicModel] = useSetting(
+    SETTING_KEYS.anthropicModel,
+    DEFAULT_ANTHROPIC_MODEL,
+  )
+
   const [voiceName, setVoiceName] = useSetting(SETTING_KEYS.voiceName)
   const [ttsRate, setTtsRate] = useSetting(SETTING_KEYS.ttsRate, '1')
   const voices = useVoices('de')
   const rateNum = Number(ttsRate) || 1
+
+  const active = PROVIDERS.find((p) => p.value === provider) ?? PROVIDERS[0]
+  const activeKey = provider === 'openai' ? openaiKey : anthropicKey
+  const setActiveKey = provider === 'openai' ? setOpenaiKey : setAnthropicKey
+  const activeModel = provider === 'openai' ? openaiModel : anthropicModel
+  const setActiveModel =
+    provider === 'openai' ? setOpenaiModel : setAnthropicModel
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6 px-6 py-6">
@@ -46,7 +78,7 @@ export default function SettingsScreen() {
           htmlFor="provider-picker"
           className="text-sm font-medium text-slate-200"
         >
-          Translation provider
+          LLM provider
         </label>
         <select
           id="provider-picker"
@@ -60,114 +92,53 @@ export default function SettingsScreen() {
             </option>
           ))}
         </select>
-        <p className="text-xs text-slate-400">
-          {PROVIDERS.find((p) => p.value === provider)?.hint}
-        </p>
+        <p className="text-xs text-slate-400">{active.hint}</p>
       </section>
 
-      {provider === 'deepl' && (
-        <section className="flex flex-col gap-2">
-          <label
-            htmlFor="deepl-key"
-            className="text-sm font-medium text-slate-200"
+      <section className="flex flex-col gap-2">
+        <label htmlFor="api-key" className="text-sm font-medium text-slate-200">
+          {active.keyLabel}
+        </label>
+        <p className="text-xs text-slate-400">
+          Get one at{' '}
+          <a
+            href={active.keyUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="text-sky-400 underline"
           >
-            DeepL API key
-          </label>
-          <p className="text-xs text-slate-400">
-            Free tier at{' '}
-            <a
-              href="https://www.deepl.com/pro-api"
-              target="_blank"
-              rel="noreferrer"
-              className="text-sky-400 underline"
-            >
-              deepl.com/pro-api
-            </a>{' '}
-            — 500k chars/month. Free keys end in <code>:fx</code>.
-          </p>
-          <input
-            id="deepl-key"
-            type="password"
-            autoComplete="off"
-            value={deeplKey}
-            onChange={(e) => setDeeplKey(e.target.value)}
-            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx:fx"
-            className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-sky-500 focus:outline-none"
-          />
-        </section>
-      )}
+            {active.keyUrlLabel}
+          </a>
+          . Stored locally in this browser only.
+        </p>
+        <input
+          id="api-key"
+          type="password"
+          autoComplete="off"
+          value={activeKey}
+          onChange={(e) => setActiveKey(e.target.value)}
+          placeholder={active.keyPlaceholder}
+          className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-sky-500 focus:outline-none"
+        />
+      </section>
 
-      {provider === 'openai' && (
-        <section className="flex flex-col gap-2">
-          <label
-            htmlFor="openai-key"
-            className="text-sm font-medium text-slate-200"
-          >
-            OpenAI API key
-          </label>
-          <p className="text-xs text-slate-400">
-            Get one at{' '}
-            <a
-              href="https://platform.openai.com/api-keys"
-              target="_blank"
-              rel="noreferrer"
-              className="text-sky-400 underline"
-            >
-              platform.openai.com/api-keys
-            </a>
-            .
-          </p>
-          <input
-            id="openai-key"
-            type="password"
-            autoComplete="off"
-            value={openaiKey}
-            onChange={(e) => setOpenaiKey(e.target.value)}
-            placeholder="sk-…"
-            className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-sky-500 focus:outline-none"
-          />
-          <p className="rounded-md border border-amber-800 bg-amber-950/40 px-3 py-2 text-xs text-amber-300">
-            OpenAI translator not wired up yet — switch to DeepL for now. Full
-            LLM translation lands with the Voice Chat phase.
-          </p>
-        </section>
-      )}
-
-      {provider === 'anthropic' && (
-        <section className="flex flex-col gap-2">
-          <label
-            htmlFor="anthropic-key"
-            className="text-sm font-medium text-slate-200"
-          >
-            Anthropic API key
-          </label>
-          <p className="text-xs text-slate-400">
-            Get one at{' '}
-            <a
-              href="https://console.anthropic.com/settings/keys"
-              target="_blank"
-              rel="noreferrer"
-              className="text-sky-400 underline"
-            >
-              console.anthropic.com/settings/keys
-            </a>
-            .
-          </p>
-          <input
-            id="anthropic-key"
-            type="password"
-            autoComplete="off"
-            value={anthropicKey}
-            onChange={(e) => setAnthropicKey(e.target.value)}
-            placeholder="sk-ant-…"
-            className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-sky-500 focus:outline-none"
-          />
-          <p className="rounded-md border border-amber-800 bg-amber-950/40 px-3 py-2 text-xs text-amber-300">
-            Claude translator not wired up yet — switch to DeepL for now. Full
-            LLM translation lands with the Voice Chat phase.
-          </p>
-        </section>
-      )}
+      <section className="flex flex-col gap-2">
+        <label htmlFor="model" className="text-sm font-medium text-slate-200">
+          Model
+        </label>
+        <input
+          id="model"
+          type="text"
+          value={activeModel}
+          onChange={(e) => setActiveModel(e.target.value)}
+          className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-sky-500 focus:outline-none"
+        />
+        <p className="text-xs text-slate-400">
+          Advanced. Defaults:{' '}
+          <code>{DEFAULT_ANTHROPIC_MODEL}</code> for Anthropic,{' '}
+          <code>{DEFAULT_OPENAI_MODEL}</code> for OpenAI.
+        </p>
+      </section>
 
       <section className="flex flex-col gap-2">
         <label

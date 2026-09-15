@@ -35,18 +35,20 @@ Ship-incrementally plan for the web (PWA) version. Each phase produces something
 
 ## Phase 1 — Translator + TTS (MVP, ~2–3 days)
 
-- [ ] Translate screen: German `<textarea>`, English result panel, swap-direction button.
-- [ ] `TranslatorService` interface + `DeepLTranslator` implementation (uses key from Settings → `localStorage`).
-- [ ] Settings screen: **provider picker** (DeepL / OpenAI / Anthropic) + per-provider API key input. **Only DeepL is wired up in Phase 1** — OpenAI/Anthropic slots are UI-only, deferred to Phase 7 when the LLM clients ship.
-- [ ] "🔊 Pronounce" button → `speechSynthesis.speak` with `de-DE`.
-- [ ] Voice picker in Settings (list `getVoices()` filtered by `de-DE`).
-- [ ] "+ Save to list" button (stub — toast only for now).
-- [ ] Error states: no key, quota exceeded, offline, no `de-DE` voice, provider not wired up.
-- [ ] Loading state (spinner + disable button during fetch).
+- [x] Translate screen: German `<textarea>`, English result panel, swap-direction button.
+- [x] `Translator` interface + `OpenAITranslator` / `AnthropicTranslator` implementations (LLM-only, BYOK, key from Settings → `localStorage`).
+- [x] Cloudflare Worker same-origin proxy (`/api/llm/openai`, `/api/llm/anthropic`) — avoids browser CORS, hides upstream endpoints.
+- [x] Settings screen: **provider picker** (Anthropic / OpenAI) + per-provider API key + model override + link to key-console.
+- [x] "🔊 Pronounce" button → `speechSynthesis.speak` with `de-DE`.
+- [x] Voice picker in Settings (list `getVoices()` filtered by `de-DE`).
+- [x] Rich translation output: translation + optional grammar note + optional example sentence.
+- [x] Demo mode: 3–5 preset example outputs when no API key set.
+- [x] "+ Save to list" button (stub — Phase 2 wires it up).
+- [x] Error states: no key, request failed, offline.
 
-**Done when:** paste key → type "Hallo" → see "Hello" → tap speaker → hear "de-DE" voice.
+**Done when:** paste key → type "Hallo" → see "Hello" + grammar note + example → tap speaker → hear "de-DE" voice.
 
-**Deferred (see Phase 7):** wiring OpenAI + Anthropic providers into `TranslatorService`. Once the LLM adapters exist for Voice Chat, hook them in as translators too — same key powers translation and conversation.
+**Deferred (see Phase 5):** LLM Vision handwriting OCR uses the same key set here.
 
 ---
 
@@ -97,19 +99,19 @@ Ship early, iterate live. Do this before adding more features.
 
 ---
 
-## Phase 5 — Handwriting Input (~3–5 days, optional)
+## Phase 5 — Handwriting Input (~2–3 days)
 
-Punt if not high-priority. Web OCR quality is materially worse than iOS Vision.
+Uses **LLM Vision** (Claude Sonnet 5 / GPT-4o) via the API key already configured in Settings — no separate OCR service to set up. Handwriting quality on par with Google Cloud Vision, no extra provider.
 
 - [ ] `<canvas>` component with pointer events (mouse + touch + Apple Pencil on iPad).
 - [ ] Clear / undo buttons.
 - [ ] Toggle on Translate screen: keyboard ↔ draw.
-- [ ] OCR pipeline (pick one):
-  - **Path A:** Tesseract.js `deu` traineddata — free, in-browser, ~5MB download, weak on cursive.
-  - **Path B:** Google Cloud Vision `DOCUMENT_TEXT_DETECTION` — needs key + backend proxy (to hide key) OR client-side with restricted key. Best quality.
-- [ ] "Recognize" → insert text into German field → normal translate flow.
+- [ ] On "Recognize": export canvas as PNG → base64 → send with a vision-capable model (`claude-sonnet-5` or `gpt-4o`) → prompt: "Extract the German text from this image, then translate to English."
+- [ ] Reuse the `/api/llm/*` Worker proxy; extend request shape to include image content.
+- [ ] Guard: if user's current model isn't vision-capable, prompt them to switch model (Settings) or default to vision model for this feature only.
+- [ ] Insert recognized text into the German field → normal translate flow (or bypass and show combined OCR+translate result).
 
-**Done when:** draw "Apfel" with mouse/finger/Pencil → translate to "apple".
+**Done when:** draw "Apfel" with mouse/finger/Pencil → recognized as "Apfel" → translated to "apple".
 
 ---
 
@@ -133,11 +135,10 @@ Upgrade from the original "Drive Export" scope: sync the **full app state** (set
 
 ## Phase 7 — Voice Chat with LLM (~1.5 weeks)
 
-Warn about iOS Safari STT limitations up-front; primary target is desktop/Android for reliable STT.
+Warn about iOS Safari STT limitations up-front; primary target is desktop/Android for reliable STT. Uses the **same LLM key from Phase 1** — no additional setup.
 
-- [ ] Settings: LLM provider picker (OpenAI / Anthropic), API key (localStorage), model, CEFR level.
-- [ ] `LLMClient` interface + `OpenAIClient`, `AnthropicClient` (streaming via SSE).
-- [ ] **Wire LLM adapters into `TranslatorService`** so the provider picker in Settings (added in Phase 1) actually routes DE↔EN translation through OpenAI/Claude when selected. Rich-output mode: not just the translation but grammar note + IPA + example sentence. Same key powers translation and conversation.
+- [ ] Settings: CEFR level picker (A1/A2/B1/B2). Provider + key + model are already in Settings from Phase 1.
+- [ ] Extend `Translator` interface / add `ChatClient` interface — same OpenAI/Anthropic adapters, different prompts.
 - [ ] Mic permission flow + browser support detection (`'SpeechRecognition' in window || 'webkitSpeechRecognition' in window`).
 - [ ] Call screen UI: avatar, mute, end, live transcript (both sides).
 - [ ] Loop: `SpeechRecognition('de-DE')` → LLM (streaming) → `speechSynthesis('de-DE')` → loopback.
