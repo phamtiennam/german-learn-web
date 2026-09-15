@@ -54,16 +54,20 @@ Ship-incrementally plan for the web (PWA) version. Each phase produces something
 
 ## Phase 2 — Vocabulary List + Persistence (~2–3 days)
 
-- [ ] Define Dexie schema: `words` table with indexed fields.
-- [ ] `Word` TypeScript model + zod validation.
-- [ ] List screen: virtual list (`@tanstack/react-virtual` if > 500 rows), search bar, sort dropdown, swipe-to-delete (mobile) / delete button (desktop).
-- [ ] Wire "+ Save to list" from Translate screen → real Dexie insert.
-- [ ] Edit modal / route: change German/English/notes.
-- [ ] Empty state with friendly copy + CTA back to Translate.
-- [ ] Local **export/import CSV** for vocab (download `.csv` / file input).
-- [ ] Local **backup/restore JSON** for **full app state** (settings + vocab + provider keys). Settings screen → "Backup all data" downloads `germanlearn-backup-YYYY-MM-DD.json`; "Restore" accepts the same file. Manual sync fallback before Drive lands in Phase 6.
+- [x] Define Dexie schema: `words` table with indexed fields.
+- [x] `Word` TypeScript model.
+- [x] List screen: search bar, sort dropdown (recent / A-Z DE / A-Z EN / least-reviewed), edit + delete on each row.
+- [x] Wire "+ Save to list" from Translate screen → real Dexie insert (with grammar/example prefilled in Notes).
+- [x] Add-word / edit-word modal (shared component).
+- [x] Empty state with friendly copy + CTA back to Translate.
+- [x] **📋 Paste & Save** button — reads clipboard, auto-splits on `— - = : |` separators, opens dialog pre-filled.
+- [x] **`/add?de=&en=&notes=`** URL route — accepts URL params (also `?text=` fallback for share-target), opens save dialog. Foundation for iOS Shortcut / share sheet flow.
+- [x] **PWA `share_target`** in manifest — Android Chrome + desktop share menus surface the app. iOS Safari doesn't support share targets; iOS users go via Shortcut (see below).
+- [x] Local **backup/restore JSON** for **full app state** (settings + vocab). Settings screen → "Backup all data" downloads `germanlearn-backup-YYYY-MM-DD.json`; "Restore from file" merges words + restores settings.
 
-**Done when:** translated words land in the list, survive a browser refresh, vocab exportable/importable via CSV, full state backup/restore round-trips via JSON file.
+**Done when:** translated words land in the list, survive a browser refresh, vocab exportable/importable via JSON, `/add?de=X&en=Y` URL round-trips.
+
+**Deferred to Phase 6:** iOS Shortcut template (one-tap install via iCloud share link) that calls `/add?de=[SelectedText]` from any Share sheet. Not needed to unblock the workflow — power users can build it in Shortcuts app today; the app's `/add` route is the anchor.
 
 ---
 

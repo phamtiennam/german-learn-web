@@ -15,6 +15,10 @@ import {
   useSetting,
   type Provider,
 } from '../../core/settings/settingsStore'
+import { addWord } from '../../core/db/schema'
+import AddWordDialog, {
+  type DialogInput,
+} from '../vocabulary/AddWordDialog'
 import { DEMO_EXAMPLES } from './demoExamples'
 
 export default function TranslateScreen() {
@@ -56,6 +60,8 @@ export default function TranslateScreen() {
   const [result, setResult] = useState<TranslationResult | null>(null)
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [error, setError] = useState<string | null>(null)
+  const [saveDialog, setSaveDialog] = useState<DialogInput | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
 
   const swap = () => {
     setSource(target)
@@ -91,6 +97,26 @@ export default function TranslateScreen() {
   const pronounce = (text: string) => {
     if (!text.trim()) return
     speak(text, { voiceName: voiceName || undefined, rate, lang: 'de-DE' })
+  }
+
+  const openSaveDialog = () => {
+    if (!result) return
+    const de = source === 'DE' ? input : result.translation
+    const en = source === 'DE' ? result.translation : input
+    let notes = ''
+    if (result.grammar) notes += result.grammar
+    if (result.example) {
+      if (notes) notes += '\n\n'
+      notes += `Example: ${result.example.de} — ${result.example.en}`
+    }
+    setSaveDialog({ german: de, english: en, notes })
+  }
+
+  const handleSaveWord = async (input: DialogInput) => {
+    await addWord(input)
+    setSaveDialog(null)
+    setToast('Saved to list')
+    setTimeout(() => setToast(null), 2000)
   }
 
   const translatedText = result?.translation ?? ''
@@ -180,11 +206,27 @@ export default function TranslateScreen() {
       )}
 
       <button
-        disabled
-        className="mt-4 rounded-lg border border-dashed border-slate-700 py-2 text-sm text-slate-500"
+        onClick={openSaveDialog}
+        disabled={!result}
+        className="mt-4 rounded-lg border border-dashed border-slate-700 py-2 text-sm text-slate-300 hover:bg-slate-800 disabled:cursor-not-allowed disabled:text-slate-500 disabled:hover:bg-transparent"
       >
-        + Save to list (Phase 2)
+        + Save to list
       </button>
+
+      {saveDialog && (
+        <AddWordDialog
+          title="Save to vocabulary"
+          initial={saveDialog}
+          onSave={handleSaveWord}
+          onCancel={() => setSaveDialog(null)}
+        />
+      )}
+
+      {toast && (
+        <div className="pointer-events-none fixed bottom-24 left-1/2 -translate-x-1/2 rounded-full bg-slate-800 px-4 py-2 text-sm text-slate-100 shadow-lg">
+          {toast}
+        </div>
+      )}
     </div>
   )
 }

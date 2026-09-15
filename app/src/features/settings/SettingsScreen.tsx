@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react'
 import {
   DEFAULT_ANTHROPIC_MODEL,
   DEFAULT_OPENAI_MODEL,
@@ -7,6 +8,7 @@ import {
   type Provider,
 } from '../../core/settings/settingsStore'
 import { useVoices } from '../../core/services/tts'
+import { exportBackup, importBackup } from '../../core/db/backup'
 
 interface ProviderMeta {
   value: Provider
@@ -77,6 +79,29 @@ export default function SettingsScreen() {
   const [ttsRate, setTtsRate] = useSetting(SETTING_KEYS.ttsRate, '1')
   const voices = useVoices('de')
   const rateNum = Number(ttsRate) || 1
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [backupStatus, setBackupStatus] = useState<string | null>(null)
+
+  const handleRestoreClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleRestoreFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    try {
+      const result = await importBackup(file)
+      setBackupStatus(
+        `Restored ${result.wordsAdded} word${result.wordsAdded === 1 ? '' : 's'} and ${result.settingsRestored} setting${result.settingsRestored === 1 ? '' : 's'}. Reload to apply.`,
+      )
+    } catch (err) {
+      setBackupStatus(
+        `Restore failed: ${err instanceof Error ? err.message : String(err)}`,
+      )
+    }
+  }
 
   const active = PROVIDERS.find((p) => p.value === provider) ?? PROVIDERS[0]
 
@@ -215,6 +240,41 @@ export default function SettingsScreen() {
           onChange={(e) => setTtsRate(e.target.value)}
           className="accent-sky-500"
         />
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <h2 className="text-sm font-medium text-slate-200">
+          Backup & Restore
+        </h2>
+        <p className="text-xs text-slate-400">
+          Export all settings + vocabulary as one JSON file, or restore from a
+          previously exported file. Great for moving data between devices
+          before Drive sync (Phase 6) lands.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => void exportBackup()}
+            className="flex-1 rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-200 hover:bg-slate-800"
+          >
+            Backup all data
+          </button>
+          <button
+            onClick={handleRestoreClick}
+            className="flex-1 rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-200 hover:bg-slate-800"
+          >
+            Restore from file
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json"
+            className="hidden"
+            onChange={handleRestoreFile}
+          />
+        </div>
+        {backupStatus && (
+          <p className="text-xs text-slate-300">{backupStatus}</p>
+        )}
       </section>
 
       <p className="mt-4 text-xs text-slate-500">
