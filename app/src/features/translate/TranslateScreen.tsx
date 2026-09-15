@@ -16,7 +16,6 @@ import {
   type Provider,
 } from '../../core/settings/settingsStore'
 import { DEMO_EXAMPLES } from './demoExamples'
-import HandwritingCanvas from './HandwritingCanvas'
 
 export default function TranslateScreen() {
   const [providerRaw] = useSetting(SETTING_KEYS.provider, DEFAULT_PROVIDER)
@@ -54,7 +53,6 @@ export default function TranslateScreen() {
   const [source, setSource] = useState<Lang>('DE')
   const [target, setTarget] = useState<Lang>('EN')
   const [input, setInput] = useState('')
-  const [inputMode, setInputMode] = useState<'type' | 'draw'>('type')
   const [result, setResult] = useState<TranslationResult | null>(null)
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [error, setError] = useState<string | null>(null)
@@ -127,62 +125,20 @@ export default function TranslateScreen() {
       )}
 
       <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <label className="text-xs uppercase tracking-wide text-slate-400">
-            {source === 'DE' ? 'German' : 'English'}
-          </label>
-          {source === 'DE' && (
-            <div className="flex gap-1 rounded-full border border-slate-700 p-0.5">
-              <button
-                onClick={() => setInputMode('type')}
-                className={`rounded-full px-3 py-1 text-xs ${
-                  inputMode === 'type'
-                    ? 'bg-slate-700 text-slate-100'
-                    : 'text-slate-400'
-                }`}
-              >
-                📝 Type
-              </button>
-              <button
-                onClick={() => setInputMode('draw')}
-                className={`rounded-full px-3 py-1 text-xs ${
-                  inputMode === 'draw'
-                    ? 'bg-slate-700 text-slate-100'
-                    : 'text-slate-400'
-                }`}
-              >
-                ✏️ Draw
-              </button>
-            </div>
-          )}
-        </div>
-
-        {inputMode === 'draw' && source === 'DE' ? (
-          <HandwritingCanvas
-            onRecognized={(text) => {
-              setInput(text)
-              setInputMode('type')
-            }}
-            onCancel={() => setInputMode('type')}
-          />
-        ) : (
-          <>
-            <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              className="min-h-32 rounded-lg border border-slate-700 bg-slate-900 p-3 text-slate-100 focus:border-sky-500 focus:outline-none"
-              placeholder={
-                source === 'DE' ? 'Type in German…' : 'Type in English…'
-              }
-            />
-            {input.trim().length > LONG_INPUT_THRESHOLD && (
-              <p className="text-xs text-amber-400">
-                Long input ({input.trim().length} chars) — grammar note &
-                example will be skipped. Use shorter phrases for full learning
-                output.
-              </p>
-            )}
-          </>
+        <label className="text-xs uppercase tracking-wide text-slate-400">
+          {source === 'DE' ? 'German' : 'English'}
+        </label>
+        <textarea
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          className="min-h-32 rounded-lg border border-slate-700 bg-slate-900 p-3 text-slate-100 focus:border-sky-500 focus:outline-none"
+          placeholder={source === 'DE' ? 'Type in German…' : 'Type in English…'}
+        />
+        {input.trim().length > LONG_INPUT_THRESHOLD && (
+          <p className="text-xs text-amber-400">
+            Long input ({input.trim().length} chars) — grammar note & example
+            will be skipped. Use shorter phrases for full learning output.
+          </p>
         )}
       </div>
 
