@@ -32,9 +32,12 @@ export default defineConfig({
     port: 5173,
     allowedHosts: true,
     proxy: {
-      // Dev-only mirrors of the Worker /api/llm/* routes.
-      // Header conversion (Bearer -> x-api-key) is handled by
-      // configure() hooks so behavior matches production.
+      // Dev-only mirrors of the Worker routes.
+      '/api/translate': {
+        target: 'https://api-free.deepl.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace('/api/translate', '/v2/translate'),
+      },
       '/api/llm/openai': {
         target: 'https://api.openai.com',
         changeOrigin: true,

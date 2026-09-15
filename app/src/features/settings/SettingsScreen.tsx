@@ -8,7 +8,7 @@ import {
 } from '../../core/settings/settingsStore'
 import { useVoices } from '../../core/services/tts'
 
-const PROVIDERS: {
+interface ProviderMeta {
   value: Provider
   label: string
   keyLabel: string
@@ -16,7 +16,20 @@ const PROVIDERS: {
   keyUrl: string
   keyUrlLabel: string
   hint: string
-}[] = [
+  hasModel: boolean
+}
+
+const PROVIDERS: ProviderMeta[] = [
+  {
+    value: 'deepl',
+    label: 'DeepL',
+    keyLabel: 'DeepL API key',
+    keyPlaceholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx:fx',
+    keyUrl: 'https://www.deepl.com/pro-api',
+    keyUrlLabel: 'deepl.com/pro-api',
+    hint: 'Best DE↔EN quality, 500k chars/month free. Plain translation (no grammar/example).',
+    hasModel: false,
+  },
   {
     value: 'anthropic',
     label: 'Anthropic (Claude)',
@@ -24,7 +37,8 @@ const PROVIDERS: {
     keyPlaceholder: 'sk-ant-…',
     keyUrl: 'https://console.anthropic.com/settings/keys',
     keyUrlLabel: 'console.anthropic.com/settings/keys',
-    hint: 'Claude Haiku 4.5 by default — cheap, fast, good for translation.',
+    hint: 'Claude Haiku 4.5 by default — rich output (translation + grammar + example).',
+    hasModel: true,
   },
   {
     value: 'openai',
@@ -33,7 +47,8 @@ const PROVIDERS: {
     keyPlaceholder: 'sk-…',
     keyUrl: 'https://platform.openai.com/api-keys',
     keyUrlLabel: 'platform.openai.com/api-keys',
-    hint: 'GPT-4o-mini by default — cheap, fast, wide compatibility.',
+    hint: 'GPT-4o-mini by default — rich output. Requires $5 minimum credit on OpenAI.',
+    hasModel: true,
   },
 ]
 
@@ -44,6 +59,7 @@ export default function SettingsScreen() {
   )
   const provider = providerRaw as Provider
 
+  const [deeplKey, setDeeplKey] = useSetting(SETTING_KEYS.deeplKey)
   const [openaiKey, setOpenaiKey] = useSetting(SETTING_KEYS.openaiKey)
   const [openaiModel, setOpenaiModel] = useSetting(
     SETTING_KEYS.openaiModel,
@@ -63,10 +79,22 @@ export default function SettingsScreen() {
   const rateNum = Number(ttsRate) || 1
 
   const active = PROVIDERS.find((p) => p.value === provider) ?? PROVIDERS[0]
-  const activeKey = provider === 'openai' ? openaiKey : anthropicKey
-  const setActiveKey = provider === 'openai' ? setOpenaiKey : setAnthropicKey
-  const activeModel = provider === 'openai' ? openaiModel : anthropicModel
-  const setActiveModel =
+
+  const keyValue =
+    provider === 'deepl'
+      ? deeplKey
+      : provider === 'openai'
+        ? openaiKey
+        : anthropicKey
+  const setKeyValue =
+    provider === 'deepl'
+      ? setDeeplKey
+      : provider === 'openai'
+        ? setOpenaiKey
+        : setAnthropicKey
+
+  const modelValue = provider === 'openai' ? openaiModel : anthropicModel
+  const setModelValue =
     provider === 'openai' ? setOpenaiModel : setAnthropicModel
 
   return (
@@ -78,7 +106,7 @@ export default function SettingsScreen() {
           htmlFor="provider-picker"
           className="text-sm font-medium text-slate-200"
         >
-          LLM provider
+          Translation provider
         </label>
         <select
           id="provider-picker"
@@ -115,30 +143,32 @@ export default function SettingsScreen() {
           id="api-key"
           type="password"
           autoComplete="off"
-          value={activeKey}
-          onChange={(e) => setActiveKey(e.target.value)}
+          value={keyValue}
+          onChange={(e) => setKeyValue(e.target.value)}
           placeholder={active.keyPlaceholder}
           className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-sky-500 focus:outline-none"
         />
       </section>
 
-      <section className="flex flex-col gap-2">
-        <label htmlFor="model" className="text-sm font-medium text-slate-200">
-          Model
-        </label>
-        <input
-          id="model"
-          type="text"
-          value={activeModel}
-          onChange={(e) => setActiveModel(e.target.value)}
-          className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-sky-500 focus:outline-none"
-        />
-        <p className="text-xs text-slate-400">
-          Advanced. Defaults:{' '}
-          <code>{DEFAULT_ANTHROPIC_MODEL}</code> for Anthropic,{' '}
-          <code>{DEFAULT_OPENAI_MODEL}</code> for OpenAI.
-        </p>
-      </section>
+      {active.hasModel && (
+        <section className="flex flex-col gap-2">
+          <label htmlFor="model" className="text-sm font-medium text-slate-200">
+            Model
+          </label>
+          <input
+            id="model"
+            type="text"
+            value={modelValue}
+            onChange={(e) => setModelValue(e.target.value)}
+            className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-sky-500 focus:outline-none"
+          />
+          <p className="text-xs text-slate-400">
+            Advanced. Defaults:{' '}
+            <code>{DEFAULT_ANTHROPIC_MODEL}</code> for Anthropic,{' '}
+            <code>{DEFAULT_OPENAI_MODEL}</code> for OpenAI.
+          </p>
+        </section>
+      )}
 
       <section className="flex flex-col gap-2">
         <label

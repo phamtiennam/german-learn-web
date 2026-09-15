@@ -58,6 +58,65 @@ function parseResult(raw: string): TranslationResult {
   }
 }
 
+function extractProviderError(
+  provider: 'DeepL' | 'OpenAI' | 'Anthropic',
+  status: number,
+  body: string,
+): string {
+  let message = body
+  try {
+    const parsed = JSON.parse(body) as {
+      error?: { message?: string; code?: string; type?: string }
+      message?: string
+    }
+    if (parsed.error?.message) message = parsed.error.message
+    else if (parsed.message) message = parsed.message
+  } catch {
+    // Body wasn't JSON — fall back to raw text
+  }
+  return `${provider} ${status}: ${message.trim() || 'request failed'}`
+}
+
+export class DeepLTranslator implements Translator {
+  private readonly apiKey: string
+
+  constructor(apiKey: string) {
+    this.apiKey = apiKey
+  }
+
+  async translate(
+    text: string,
+    source: Lang,
+    target: Lang,
+    _opts?: TranslateOptions,
+  ): Promise<TranslationResult> {
+    const trimmed = text.trim()
+    if (!trimmed) return { translation: '' }
+    if (source === target) return { translation: text }
+
+    const res = await fetch('/api/translate', {
+      method: 'POST',
+      headers: {
+        Authorization: `DeepL-Auth-Key ${this.apiKey}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        text: trimmed,
+        source_lang: source,
+        target_lang: target === 'EN' ? 'EN-US' : 'DE',
+      }),
+    })
+
+    if (!res.ok) {
+      const body = await res.text().catch(() => '')
+      throw new Error(extractProviderError('DeepL', res.status, body))
+    }
+
+    const data = (await res.json()) as { translations: { text: string }[] }
+    return { translation: data.translations[0]?.text ?? '' }
+  }
+}
+
 export class OpenAITranslator implements Translator {
   private readonly apiKey: string
   private readonly model: string
@@ -96,9 +155,7 @@ export class OpenAITranslator implements Translator {
 
     if (!res.ok) {
       const body = await res.text().catch(() => '')
-      throw new Error(
-        `OpenAI ${res.status}: ${body || res.statusText || 'request failed'}`,
-      )
+      throw new Error(extractProviderError('OpenAI', res.status, body))
     }
 
     const data = (await res.json()) as {
@@ -146,9 +203,7 @@ export class AnthropicTranslator implements Translator {
 
     if (!res.ok) {
       const body = await res.text().catch(() => '')
-      throw new Error(
-        `Anthropic ${res.status}: ${body || res.statusText || 'request failed'}`,
-      )
+      throw new Error(extractProviderError('Anthropic', res.status, body))
     }
 
     const data = (await res.json()) as {
@@ -166,6 +221,7 @@ export function createTranslator(
   model: string,
 ): Translator | null {
   if (!key) return null
+  if (provider === 'deepl') return new DeepLTranslator(key)
   if (provider === 'openai') return new OpenAITranslator(key, model)
   if (provider === 'anthropic') return new AnthropicTranslator(key, model)
   return null

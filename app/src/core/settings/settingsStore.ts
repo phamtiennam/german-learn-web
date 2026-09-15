@@ -43,6 +43,7 @@ export function useSetting(
 
 export const SETTING_KEYS = {
   provider: 'provider',
+  deeplKey: 'deeplKey',
   openaiKey: 'openaiKey',
   openaiModel: 'openaiModel',
   anthropicKey: 'anthropicKey',
@@ -51,7 +52,7 @@ export const SETTING_KEYS = {
   ttsRate: 'ttsRate',
 } as const
 
-export type Provider = 'openai' | 'anthropic'
-export const DEFAULT_PROVIDER: Provider = 'anthropic'
+export type Provider = 'deepl' | 'openai' | 'anthropic'
+export const DEFAULT_PROVIDER: Provider = 'deepl'
 export const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini'
 export const DEFAULT_ANTHROPIC_MODEL = 'claude-haiku-4-5'
